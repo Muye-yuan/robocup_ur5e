@@ -218,7 +218,6 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 
 This software is licensed for **academic and research purposes only**. **Commercial use is strictly prohibited** without explicit written permission from the authors.
 
-For commercial licensing inquiries, please contact: suhang@robocup.org
 
 ---
 
