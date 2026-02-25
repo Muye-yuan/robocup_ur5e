@@ -1,6 +1,13 @@
 # GraspNet 配置
 model:
   checkpoint_path: "graspnet_checkpoints/checkpoint.tar"
+
+input:
+  pointcloud_topic: "/camera/depth/points"
+  rgb_topic: "/camera/color/image_raw"
+  camera_info_topic: "/camera/color/camera_info"
+  sync_slop: 0.08
+  use_detection_roi: true
   
 estimation:
   num_candidates: 5
