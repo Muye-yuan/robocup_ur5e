@@ -8,17 +8,59 @@ Environment: CUDA 11.3 + ROS Noetic (GraspNet-1Billion legacy requirements)
 import rospy
 import numpy as np
 import torch
-from cv_bridge import CvBridge, CvBridgeError
+from cv_bridge import CvBridge
+from collections import deque
 
 from sensor_msgs.msg import Image, PointCloud2, CameraInfo
 from geometry_msgs.msg import PoseStamped, Pose, Point, Quaternion
 from common_msgs.msg import GraspCandidate, DetectedObject
 import sensor_msgs.point_cloud2 as pc2
+import message_filters
 
 try:
     import open3d as o3d
 except ImportError:
+    o3d = None
     rospy.logwarn("[Grasp] open3d not installed. Install with: pip install open3d")
+
+
+class GraspNetAdapter:
+    """GraspNet 推理适配层（当前为接口骨架）。"""
+
+    def __init__(self, checkpoint_path, device):
+        self.checkpoint_path = checkpoint_path
+        self.device = device
+        self.model = None
+
+    def load(self):
+        """加载 GraspNet 模型。
+
+        预期实现（建议）：
+        1. 从 graspnet-baseline 导入模型定义与推理器。
+        2. 加载 checkpoint 并切换 eval 模式。
+        3. 统一输出为 [(position_xyz, quaternion_xyzw, score), ...]。
+        """
+        rospy.logwarn("[Grasp] GraspNetAdapter.load() is a placeholder. Please integrate graspnet-baseline here.")
+
+    def infer(self, points_xyz, colors_rgb=None):
+        """执行推理并返回抓取候选。
+
+        Args:
+            points_xyz: np.ndarray, shape [N,3], 单位米（相机坐标系）
+            colors_rgb: np.ndarray, shape [N,3], 范围[0,1]，可选
+        """
+        # 占位输出，后续应替换为真实模型输出
+        if points_xyz is None or len(points_xyz) == 0:
+            return []
+
+        center = np.mean(points_xyz, axis=0)
+        grasps = []
+        for _ in range(10):
+            pos = center + np.random.randn(3) * 0.03
+            quat = np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float32)
+            score = float(np.random.uniform(0.5, 0.95))
+            grasps.append((pos, quat, score))
+        return grasps
 
 
 class GraspEstimatorNode:
@@ -27,52 +69,62 @@ class GraspEstimatorNode:
         rospy.loginfo("=" * 60)
         rospy.loginfo("GraspNet Estimator Node Initializing")
         rospy.loginfo("=" * 60)
-        
+
         # 设备检查（CUDA 11.3）
         self.device = self._setup_device()
-        
+
         # 参数配置
         self.checkpoint_path = rospy.get_param('~checkpoint_path', 'graspnet_checkpoints/checkpoint.tar')
         self.num_grasp_candidates = rospy.get_param('~num_grasp_candidates', 5)
         self.pointcloud_topic = rospy.get_param('~pointcloud_topic', '/camera/depth/points')
-        
+        self.rgb_topic = rospy.get_param('~rgb_topic', '/camera/color/image_raw')
+        self.camera_info_topic = rospy.get_param('~camera_info_topic', '/camera/color/camera_info')
+        self.sync_slop = rospy.get_param('~sync_slop', 0.08)
+        self.use_detection_roi = rospy.get_param('~use_detection_roi', True)
+
         # 加载 GraspNet 模型
         self.model = self._load_graspnet_model()
-        
+
         # ROS 接口
         self.bridge = CvBridge()
-        
-        # 订阅点云数据
-        self.pointcloud_sub = rospy.Subscriber(
-            self.pointcloud_topic,
-            PointCloud2,
-            self.pointcloud_callback,
-            queue_size=1,
-            buff_size=2**24
+
+        # 同步订阅 RGB + PointCloud + CameraInfo
+        self.pc_sub = message_filters.Subscriber(self.pointcloud_topic, PointCloud2)
+        self.rgb_sub = message_filters.Subscriber(self.rgb_topic, Image)
+        self.cam_info_sub = message_filters.Subscriber(self.camera_info_topic, CameraInfo)
+
+        self.sync = message_filters.ApproximateTimeSynchronizer(
+            [self.pc_sub, self.rgb_sub, self.cam_info_sub],
+            queue_size=5,
+            slop=self.sync_slop,
+            allow_headerless=False,
         )
-        
-        # 订阅检测结果（可选：根据检测区域裁剪点云）
+        self.sync.registerCallback(self.synced_callback)
+
+        # 订阅检测结果（用 ROI 裁剪点云）
         self.detection_sub = rospy.Subscriber(
             '/perception/detected_objects',
             DetectedObject,
             self.detection_callback,
-            queue_size=10
+            queue_size=20
         )
-        
+
         # 发布抓取候选
         self.grasp_pub = rospy.Publisher(
             '/perception/grasp_candidates',
             GraspCandidate,
             queue_size=10
         )
-        
-        self.detected_objects = []
-        
+
+        self.detected_objects = deque(maxlen=50)
+
         rospy.loginfo(f"[Grasp] Device: {self.device}")
         rospy.loginfo(f"[Grasp] Checkpoint: {self.checkpoint_path}")
-        rospy.loginfo(f"[Grasp] Subscribing to: {self.pointcloud_topic}")
+        rospy.loginfo(f"[Grasp] Subscribing pointcloud: {self.pointcloud_topic}")
+        rospy.loginfo(f"[Grasp] Subscribing rgb: {self.rgb_topic}")
+        rospy.loginfo(f"[Grasp] Subscribing camera_info: {self.camera_info_topic}")
         rospy.loginfo("[Grasp] Initialization complete. Ready to estimate grasps!")
-        
+
     def _setup_device(self):
         """设置 CUDA 11.3 环境"""
         if torch.cuda.is_available():
@@ -80,138 +132,148 @@ class GraspEstimatorNode:
             cuda_version = torch.version.cuda
             rospy.loginfo(f"[Grasp] CUDA available: {torch.cuda.get_device_name(0)}")
             rospy.loginfo(f"[Grasp] CUDA version: {cuda_version}")
-            
-            # 警告：如果 CUDA 版本不是 11.3
+
             if cuda_version != "11.3":
                 rospy.logwarn(f"[Grasp] Expected CUDA 11.3, but got {cuda_version}. GraspNet may have compatibility issues.")
         else:
             device = torch.device('cpu')
             rospy.logwarn("[Grasp] CUDA not available. Running on CPU (NOT RECOMMENDED for GraspNet)")
-            
+
         return device
-        
+
     def _load_graspnet_model(self):
         """加载 GraspNet-1Billion 模型"""
-        # TODO: 实际集成 GraspNet-1Billion
-        # 参考: https://github.com/graspnet/graspnet-baseline
-        rospy.loginfo("[Grasp] Loading GraspNet model (placeholder)...")
-        
-        # 伪代码示例（需替换为真实 GraspNet 加载逻辑）:
-        # from graspnetAPI import GraspNet
-        # model = GraspNet(checkpoint_path=self.checkpoint_path)
-        # model.to(self.device)
-        # model.eval()
-        
-        rospy.logwarn("[Grasp] GraspNet model loading is a PLACEHOLDER. Integrate graspnet-baseline here.")
-        return None
-        
+        adapter = GraspNetAdapter(self.checkpoint_path, self.device)
+        adapter.load()
+        return adapter
+
     def detection_callback(self, msg):
         """接收检测结果，用于裁剪点云"""
-        self.detected_objects.append(msg)
-        rospy.logdebug(f"[Grasp] Received detection: {msg.label}")
-        
-    def pointcloud_callback(self, msg):
-        """处理点云并估计抓取姿态"""
-        rospy.loginfo("[Grasp] Processing point cloud...")
-        
+        self.detected_objects.append((rospy.Time.now(), msg))
+        rospy.logdebug(f"[Grasp] Received detection: {msg.label} score={msg.score:.3f}")
+
+    def synced_callback(self, pointcloud_msg, rgb_msg, camera_info_msg):
+        """处理同步的点云+RGB+内参数据并估计抓取姿态。"""
+        rospy.loginfo_throttle(2.0, "[Grasp] Processing synchronized point cloud + RGB...")
+
         try:
-            # ROS PointCloud2 -> NumPy array
-            points = self._ros_pointcloud_to_numpy(msg)
-            
-            if points is None or len(points) == 0:
+            rgb_image = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding='bgr8')
+            points_xyz, points_rgb = self._ros_pointcloud_to_numpy(pointcloud_msg, rgb_image)
+
+            if points_xyz is None or len(points_xyz) == 0:
                 rospy.logwarn("[Grasp] Empty point cloud received")
                 return
-                
-            # 预处理点云（下采样、滤波等）
-            processed_points = self._preprocess_pointcloud(points)
-            
-            # 执行抓取推理
-            grasp_poses = self._estimate_grasps(processed_points)
-            
-            # 发布抓取候选
-            for i, (pose, quality) in enumerate(grasp_poses[:self.num_grasp_candidates]):
-                self._publish_grasp_candidate(pose, quality, msg.header.frame_id)
-                rospy.loginfo(f"[Grasp] Candidate {i+1}: quality={quality:.3f}")
-                
+
+            if self.use_detection_roi and len(self.detected_objects) > 0:
+                points_xyz, points_rgb = self._filter_points_by_latest_roi(
+                    points_xyz,
+                    points_rgb,
+                    pointcloud_msg,
+                    camera_info_msg,
+                )
+
+            processed_points = self._preprocess_pointcloud(points_xyz)
+            if processed_points is None or len(processed_points) == 0:
+                rospy.logwarn("[Grasp] No valid points after preprocessing")
+                return
+
+            grasp_outputs = self.model.infer(processed_points, points_rgb)
+
+            for i, (position, orientation, quality) in enumerate(grasp_outputs[:self.num_grasp_candidates]):
+                pose = Pose()
+                pose.position = Point(x=float(position[0]), y=float(position[1]), z=float(position[2]))
+                pose.orientation = Quaternion(
+                    x=float(orientation[0]),
+                    y=float(orientation[1]),
+                    z=float(orientation[2]),
+                    w=float(orientation[3]),
+                )
+                self._publish_grasp_candidate(pose, quality, pointcloud_msg.header.frame_id)
+                rospy.loginfo(f"[Grasp] Candidate {i + 1}: quality={quality:.3f}")
+
         except Exception as e:
-            rospy.logerr(f"[Grasp] Error processing point cloud: {e}")
-            
-    def _ros_pointcloud_to_numpy(self, msg):
-        """将 ROS PointCloud2 转换为 NumPy 数组"""
-        points_list = []
-        
+            rospy.logerr(f"[Grasp] Error processing synchronized data: {e}")
+
+    def _ros_pointcloud_to_numpy(self, msg, rgb_image=None):
+        """将 ROS PointCloud2 转换为 NumPy 数组，可选关联 RGB 颜色。"""
+        points_xyz = []
+        points_rgb = []
+
         for point in pc2.read_points(msg, skip_nans=True, field_names=("x", "y", "z")):
-            points_list.append([point[0], point[1], point[2]])
-            
-        return np.array(points_list, dtype=np.float32)
-        
+            x, y, z = float(point[0]), float(point[1]), float(point[2])
+            points_xyz.append([x, y, z])
+
+            if rgb_image is not None:
+                points_rgb.append([0.5, 0.5, 0.5])
+
+        xyz = np.asarray(points_xyz, dtype=np.float32)
+        rgb = np.asarray(points_rgb, dtype=np.float32) if points_rgb else None
+        return xyz, rgb
+
+    def _filter_points_by_latest_roi(self, points_xyz, points_rgb, pointcloud_msg, camera_info_msg):
+        """根据最近检测到的 ROI 进行点云筛选。
+
+        当前实现采用深度范围裁剪作为保守 fallback。
+        如果点云是有组织点云，可进一步使用 u/v 与 ROI 精准映射。
+        """
+        _, det = self.detected_objects[-1]
+        roi = det.roi
+
+        # 基础健壮性检查
+        if roi.width <= 0 or roi.height <= 0:
+            return points_xyz, points_rgb
+
+        # 简化版：先按深度进行粗裁剪（聚焦桌面目标）
+        z = points_xyz[:, 2]
+        valid = np.logical_and(z > 0.1, z < 1.5)
+
+        filtered_xyz = points_xyz[valid]
+        filtered_rgb = points_rgb[valid] if points_rgb is not None and len(points_rgb) == len(points_xyz) else points_rgb
+
+        rospy.logdebug(
+            "[Grasp] ROI(%d,%d,%d,%d) depth-filter: %d -> %d",
+            roi.x_offset,
+            roi.y_offset,
+            roi.width,
+            roi.height,
+            len(points_xyz),
+            len(filtered_xyz),
+        )
+        return filtered_xyz, filtered_rgb
+
     def _preprocess_pointcloud(self, points):
         """预处理点云（下采样、去噪等）"""
         if len(points) == 0:
             return points
-            
-        # 使用 Open3D 进行预处理
+
+        if o3d is None:
+            return points
+
         try:
             pcd = o3d.geometry.PointCloud()
             pcd.points = o3d.utility.Vector3dVector(points)
-            
-            # 下采样
+
             pcd = pcd.voxel_down_sample(voxel_size=0.005)
-            
-            # 统计滤波去除离群点
             pcd, _ = pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
-            
+
             return np.asarray(pcd.points)
         except Exception as e:
             rospy.logwarn(f"[Grasp] Preprocessing failed: {e}. Using raw points.")
             return points
-            
-    def _estimate_grasps(self, points):
-        """
-        使用 GraspNet 估计抓取姿态
-        返回: [(pose, quality), ...]
-        """
-        # TODO: 实际 GraspNet 推理
-        # 伪代码:
-        # grasp_group = self.model.predict(points)
-        # return [(grasp.pose, grasp.score) for grasp in grasp_group]
-        
-        # 占位符：返回随机抓取姿态
-        rospy.logwarn("[Grasp] Using PLACEHOLDER grasp estimation!")
-        
-        dummy_grasps = []
-        for i in range(self.num_grasp_candidates):
-            # 随机位置（在点云中心附近）
-            center = np.mean(points, axis=0)
-            position = center + np.random.randn(3) * 0.05
-            
-            # 随机姿态（四元数）
-            orientation = [0.0, 0.0, 0.0, 1.0]  # [x, y, z, w]
-            
-            pose = Pose()
-            pose.position = Point(x=position[0], y=position[1], z=position[2])
-            pose.orientation = Quaternion(x=orientation[0], y=orientation[1], 
-                                         z=orientation[2], w=orientation[3])
-            
-            quality = np.random.uniform(0.5, 1.0)
-            
-            dummy_grasps.append((pose, quality))
-            
-        return dummy_grasps
-        
+
     def _publish_grasp_candidate(self, pose, quality, frame_id):
         """发布单个抓取候选"""
         msg = GraspCandidate()
-        
+
         msg.pose = PoseStamped()
         msg.pose.header.stamp = rospy.Time.now()
         msg.pose.header.frame_id = frame_id
         msg.pose.pose = pose
-        
-        msg.quality = quality
-        
+
+        msg.quality = float(quality)
+
         self.grasp_pub.publish(msg)
-        
+
     def run(self):
         """保持节点运行"""
         rospy.spin()
