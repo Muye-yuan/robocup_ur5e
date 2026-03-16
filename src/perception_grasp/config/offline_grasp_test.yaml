@@ -1,0 +1,11 @@
+model:
+  checkpoint_path: "weights/graspnet/checkpoint.tar"
+  graspnet_repo_path: "weights/graspnet/graspnet-baseline"
+
+inference:
+  device: "auto"
+  top_k: 10
+
+preprocess:
+  num_point: 20000
+  voxel_size: 0.005

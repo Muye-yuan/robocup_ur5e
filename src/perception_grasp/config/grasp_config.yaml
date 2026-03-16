@@ -1,14 +1,19 @@
-# GraspNet 配置
+# GraspNet online (ROS node) config
 model:
-  checkpoint_path: "graspnet_checkpoints/checkpoint.tar"
-  
+  # Recommended default for current docker-compose mount:
+  # ./graspnet_checkpoints -> /workspace/graspnet_checkpoints
+  checkpoint_path: "/workspace/graspnet_checkpoints/checkpoint.tar"
+  # Optional: set to graspnet-baseline repo root if not already in PYTHONPATH.
+  graspnet_repo_path: ""
+
 estimation:
   num_candidates: 5
   min_quality_threshold: 0.3
-  collision_threshold: 0.05  # 碰撞检测阈值（米）
-  
+  collision_threshold: 0.05
+
 pointcloud:
-  voxel_size: 0.005  # 下采样体素大小（米）
+  voxel_size: 0.005
   statistical_filter:
     nb_neighbors: 20
     std_ratio: 2.0
+  num_point: 20000

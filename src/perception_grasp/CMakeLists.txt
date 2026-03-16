@@ -22,6 +22,7 @@ catkin_package(
 
 catkin_install_python(PROGRAMS
   nodes/grasp_estimator_node.py
+  tools/publish_labeled_pcd.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
