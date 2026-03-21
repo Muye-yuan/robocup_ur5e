@@ -1,7 +1,7 @@
 # ============================================================================
-# GPU Inference Container (Python 3.10 + PyTorch nightly CUDA 12.4)
+# GPU Inference Container (Python 3.10 + PyTorch nightly CUDA 12.8)
 # ============================================================================
-FROM nvidia/cuda:12.3.2-cudnn9-devel-ubuntu22.04
+FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Asia/Shanghai
@@ -18,10 +18,9 @@ RUN apt-get update && apt-get install -y \
 
 RUN python3.10 -m pip install --upgrade pip setuptools wheel
 
-# PyTorch nightly with CUDA 12.4 (for sm_120)
-RUN python3.10 -m pip install --pre \
-    torch==2.7.0.dev20250310+cu124 \
-    --index-url https://download.pytorch.org/whl/nightly/cu124
+# PyTorch nightly with CUDA 12.8 (for RTX 50 series / sm_120)
+RUN python3.10 -m pip install --pre torch torchvision \
+    --index-url https://download.pytorch.org/whl/nightly/cu128
 
 # Runtime deps
 RUN python3.10 -m pip install \

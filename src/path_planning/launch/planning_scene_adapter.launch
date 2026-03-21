@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="frame" default="base_link" />
+  <arg name="ee_link" default="gripper_tip_link" />
+  <arg name="pointcloud_topic" default="/camera/depth/points" />
+  <arg name="motion_result_topic" default="/motion/result" />
+  <arg name="planning_scene_command_topic" default="/brain/planning_scene_command" />
+  <arg name="wait_for_pointcloud" default="false" />
+  <arg name="pointcloud_wait_sec" default="2.0" />
+
+  <node
+    name="planning_scene_adapter"
+    pkg="path_planning"
+    type="Planner_Scene.py"
+    output="screen">
+    <param name="frame" value="$(arg frame)" />
+    <param name="ee_link" value="$(arg ee_link)" />
+    <param name="pointcloud_topic" value="$(arg pointcloud_topic)" />
+    <param name="motion_result_topic" value="$(arg motion_result_topic)" />
+    <param name="planning_scene_command_topic" value="$(arg planning_scene_command_topic)" />
+    <param name="wait_for_pointcloud" value="$(arg wait_for_pointcloud)" />
+    <param name="pointcloud_wait_sec" value="$(arg pointcloud_wait_sec)" />
+  </node>
+</launch>

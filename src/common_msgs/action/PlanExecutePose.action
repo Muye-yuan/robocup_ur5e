@@ -1,0 +1,17 @@
+geometry_msgs/PoseStamped target_pose
+bool position_only
+---
+uint8 SUCCEEDED=0
+uint8 PLANNING_FAILED=1
+uint8 EXECUTION_FAILED=2
+uint8 PREEMPTED=3
+uint8 INVALID_GOAL=4
+bool success
+uint8 status
+string message
+trajectory_msgs/JointTrajectory trajectory
+---
+uint8 PLANNING=0
+uint8 EXECUTING=1
+uint8 stage
+string message

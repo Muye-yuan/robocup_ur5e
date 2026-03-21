@@ -29,6 +29,15 @@ else
     echo "⚠️  WARNING: Workspace not built yet (run 'catkin build' first)"
 fi
 
+# Mounted robot description packages live outside the generated workspace
+# metadata, so expose them explicitly for rospack and MoveIt.
+for extra_pkg in /workspace/src/ur_description /workspace/src/robotiq_description; do
+    if [ -d "$extra_pkg" ]; then
+        export ROS_PACKAGE_PATH="${extra_pkg}:${ROS_PACKAGE_PATH}"
+        echo "✅ Added to ROS_PACKAGE_PATH: $extra_pkg"
+    fi
+done
+
 # Configure ROS network (for host network mode)
 export ROS_MASTER_URI=http://localhost:11311
 export ROS_IP=127.0.0.1

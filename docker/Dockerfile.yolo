@@ -22,6 +22,8 @@ RUN apt-get update && apt-get install -y \
     ros-noetic-vision-opencv \
     ros-noetic-moveit-msgs \
     ros-noetic-trajectory-msgs \
+    ros-noetic-rosbridge-server \
+    ros-noetic-message-filters \
     python3-pip \
     python3-catkin-tools \
     build-essential \

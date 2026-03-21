@@ -2,10 +2,61 @@
 <launch>
   <!-- ROS Master URI 配置 -->
   <arg name="ros_master_uri" default="http://192.168.56.101:11311" />
+  <arg name="start_motion_control" default="true" />
+  <arg name="start_brain" default="false" />
+  <arg name="test_mode" default="false" />
+  <arg name="single_cycle" default="true" />
+  <arg name="path_planning_position_only" default="false" />
+  <arg name="direct_grasp_offset_x" default="0.0" />
+  <arg name="direct_grasp_offset_y" default="0.0" />
+  <arg name="direct_grasp_offset_z" default="0.0" />
+  <arg name="direct_grasp_local_x_offset" default="0.15" />
+  <arg name="direct_grasp_min_z" default="0.05" />
+  <arg name="direct_grasp_max_z" default="1.20" />
+  <arg name="direct_grasp_roll" default="3.141592653589793" />
+  <arg name="direct_grasp_pitch" default="1.5707963267948966" />
+  <arg name="direct_grasp_yaw" default="0.0" />
+  <arg name="direct_motion_max_velocity" default="0.6" />
+  <arg name="direct_motion_max_acceleration" default="0.6" />
+  <arg name="post_grasp_settle_time" default="0.3" />
+  <arg name="place_bin_color" default="green" />
+  <arg name="place_motion_max_velocity" default="1.0" />
+  <arg name="place_motion_max_acceleration" default="1.0" />
+  <arg name="preferred_target_label" default="cube" />
+  <arg name="cube_class_labels" default="['class_1', 'class_3', 'class_5', 'class_7']" />
+  <arg name="green_bin_joints" default="[-0.4696, -1.1530, -1.6126, 1.1743, 1.5815, -0.4750]" />
+  <arg name="blue_bin_joints" default="[1.4744, -1.0557, -1.4196, 0.9190, 1.5769, 1.4693]" />
+  <arg name="yolo_enable_topic" default="/perception/yolo26_seg_enabled" />
   <param name="ros_master_uri" value="$(arg ros_master_uri)" />
+
+  <!-- Brain 容器启动时一并拉起 motion_control，并在进程退出时自动重启 -->
+  <include file="$(find motion_control)/launch/motion_control.launch" if="$(arg start_motion_control)" />
   
-  <!-- 启动 Brain Node -->
-  <node name="robocup_brain" pkg="robocup_brain" type="brain_node.py" output="screen">
+  <!-- Brain 默认不自动启动，避免干扰 UI 调试；需要时显式传 start_brain:=true -->
+  <node name="robocup_brain" pkg="robocup_brain" type="brain_node.py" output="screen" respawn="true" respawn_delay="2.0" if="$(arg start_brain)">
     <param name="update_rate" value="10.0" />
+    <param name="test_mode" value="$(arg test_mode)" />
+    <param name="single_cycle" value="$(arg single_cycle)" />
+    <param name="path_planning_position_only" value="$(arg path_planning_position_only)" />
+    <param name="direct_grasp_offset_x" value="$(arg direct_grasp_offset_x)" />
+    <param name="direct_grasp_offset_y" value="$(arg direct_grasp_offset_y)" />
+    <param name="direct_grasp_offset_z" value="$(arg direct_grasp_offset_z)" />
+    <param name="direct_grasp_local_x_offset" value="$(arg direct_grasp_local_x_offset)" />
+    <param name="direct_grasp_min_z" value="$(arg direct_grasp_min_z)" />
+    <param name="direct_grasp_max_z" value="$(arg direct_grasp_max_z)" />
+    <param name="direct_grasp_roll" value="$(arg direct_grasp_roll)" />
+    <param name="direct_grasp_pitch" value="$(arg direct_grasp_pitch)" />
+    <param name="direct_grasp_yaw" value="$(arg direct_grasp_yaw)" />
+    <param name="direct_motion_max_velocity" value="$(arg direct_motion_max_velocity)" />
+    <param name="direct_motion_max_acceleration" value="$(arg direct_motion_max_acceleration)" />
+    <param name="post_grasp_settle_time" value="$(arg post_grasp_settle_time)" />
+    <param name="place_bin_color" value="$(arg place_bin_color)" />
+    <param name="place_motion_max_velocity" value="$(arg place_motion_max_velocity)" />
+    <param name="place_motion_max_acceleration" value="$(arg place_motion_max_acceleration)" />
+    <param name="preferred_target_label" value="$(arg preferred_target_label)" />
+    <rosparam param="cube_class_labels" subst_value="true">$(arg cube_class_labels)</rosparam>
+    <rosparam param="green_bin_joints" subst_value="true">$(arg green_bin_joints)</rosparam>
+    <rosparam param="blue_bin_joints" subst_value="true">$(arg blue_bin_joints)</rosparam>
+    <param name="yolo_enable_topic" value="$(arg yolo_enable_topic)" />
   </node>
 </launch>

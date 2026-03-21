@@ -26,7 +26,7 @@ NODE_DIR = os.path.dirname(os.path.abspath(__file__))
 if NODE_DIR not in sys.path:
     sys.path.insert(0, NODE_DIR)
 
-from grasp_inference_core import GraspNetInferenceCore
+from grasp_inference_core import GraspNetInferenceCore, filter_grasp_candidates_by_approach
 
 try:
     import open3d as o3d
@@ -46,6 +46,7 @@ class GraspEstimatorNode:
         
         # 参数配置
         self.checkpoint_path = rospy.get_param('~checkpoint_path', '/workspace/weights/graspnet/checkpoint.tar')
+        self.raw_top_k = int(rospy.get_param('~raw_top_k', 1000))
         self.num_grasp_candidates = rospy.get_param('~num_grasp_candidates', 5)
         self.pointcloud_topic = rospy.get_param('~pointcloud_topic', '/perception/yolo26_seg_cloud')
         self.graspnet_repo_path = rospy.get_param('~graspnet_repo_path', '/workspace/weights/graspnet/graspnet-baseline')
@@ -56,6 +57,11 @@ class GraspEstimatorNode:
         self.current_target_object_id = rospy.get_param('~target_object_id', -1)
         self.failure_topic = rospy.get_param('~failure_topic', '/perception/grasp_failure_reason')
         self.marker_topic = rospy.get_param('~marker_topic', '/perception/grasp_markers')
+        self.approach_filter = rospy.get_param('~approach_filter', 'top_side')
+        self.min_down_dot = float(rospy.get_param('~min_down_dot', 0.25))
+        self.max_up_dot = float(rospy.get_param('~max_up_dot', 0.2))
+        self.min_gripper_width = float(rospy.get_param('~min_gripper_width', 0.0178))
+        self.max_gripper_width = float(rospy.get_param('~max_gripper_width', 0.1006))
         
         # 加载 GraspNet 模型
         self.inference_core = self._load_graspnet_model()
@@ -117,10 +123,19 @@ class GraspEstimatorNode:
         
         rospy.loginfo(f"[Grasp] Device: {self.device}")
         rospy.loginfo(f"[Grasp] Checkpoint: {self.checkpoint_path}")
+        rospy.loginfo(f"[Grasp] Raw top-k: {self.raw_top_k}")
         rospy.loginfo(f"[Grasp] Subscribing to: {self.pointcloud_topic}")
         rospy.loginfo(f"[Grasp] TaskDecision topic: {self.task_decision_topic}")
         rospy.loginfo(f"[Grasp] Failure topic: {self.failure_topic}")
         rospy.loginfo(f"[Grasp] Marker topic: {self.marker_topic}")
+        rospy.loginfo(
+            f"[Grasp] Approach filter: mode={self.approach_filter}, "
+            f"min_down_dot={self.min_down_dot}, max_up_dot={self.max_up_dot}"
+        )
+        rospy.loginfo(
+            f"[Grasp] Gripper width limits: min={self.min_gripper_width:.4f} m, "
+            f"max={self.max_gripper_width:.4f} m"
+        )
         rospy.loginfo(f"[Grasp] Initial target_object_id: {self.current_target_object_id}")
         rospy.loginfo("[Grasp] Initialization complete. Ready to estimate grasps!")
         
@@ -242,9 +257,38 @@ class GraspEstimatorNode:
             self._clear_grasp_markers(frame_id)
             return
 
-        grasp_results = self._estimate_grasps(processed_points)
-        if not grasp_results:
+        raw_grasp_results = self._estimate_grasps(processed_points)
+        if not raw_grasp_results:
             self._publish_failure_reason("GraspNet returned no grasp candidates")
+            self._clear_grasp_markers(frame_id)
+            return
+
+        grasp_results = filter_grasp_candidates_by_approach(
+            raw_grasp_results,
+            mode=self.approach_filter,
+            min_down_dot=self.min_down_dot,
+            max_up_dot=self.max_up_dot,
+        )
+        rospy.loginfo(
+            f"[Grasp] Raw grasp candidates: {len(raw_grasp_results)}, "
+            f"filtered candidates: {len(grasp_results)}"
+        )
+        if not grasp_results:
+            self._publish_failure_reason(
+                "No grasp candidates remained after approach-direction filtering"
+            )
+            self._clear_grasp_markers(frame_id)
+            return
+
+        grasp_results = self._filter_grasps_by_width(grasp_results)
+        rospy.loginfo(
+            f"[Grasp] Width-filtered candidates: {len(grasp_results)} "
+            f"(min={self.min_gripper_width:.4f}, max={self.max_gripper_width:.4f})"
+        )
+        if not grasp_results:
+            self._publish_failure_reason(
+                "No grasp candidates remained after gripper-width filtering"
+            )
             self._clear_grasp_markers(frame_id)
             return
 
@@ -259,6 +303,15 @@ class GraspEstimatorNode:
         """发布抓取失败原因，供 FSM/调试侧消费"""
         rospy.logwarn(f"[Grasp] {reason}")
         self.failure_pub.publish(String(data=reason))
+
+    def _filter_grasps_by_width(self, grasp_results):
+        """按真实夹爪开合宽度范围过滤候选"""
+        filtered = []
+        for result in grasp_results:
+            width = float(result.get("width", 0.0))
+            if self.min_gripper_width <= width <= self.max_gripper_width:
+                filtered.append(result)
+        return filtered
             
     def _ros_pointcloud_to_numpy(self, msg):
         """将 ROS PointCloud2 转换为 NumPy 数组，并尽量读取 label 字段"""
@@ -336,7 +389,7 @@ class GraspEstimatorNode:
             rospy.logerr("[Grasp] Inference core is not available")
             return []
 
-        results = self.inference_core.predict(points, colors=None, top_k=self.num_grasp_candidates)
+        results = self.inference_core.predict(points, colors=None, top_k=self.raw_top_k)
         parsed = []
         for item in results:
             translation = np.asarray(item["translation"], dtype=np.float32).reshape(3)
@@ -356,6 +409,8 @@ class GraspEstimatorNode:
                     "pose": pose,
                     "quality": float(item["score"]),
                     "width": float(item.get("width", 0.02)),
+                    "translation": translation,
+                    "rotation": rotation_matrix,
                 }
             )
         return parsed

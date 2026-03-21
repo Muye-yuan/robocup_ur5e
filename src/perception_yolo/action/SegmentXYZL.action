@@ -1,0 +1,13 @@
+int32[] target_class_ids
+float32 confidence_threshold
+int32 max_points_per_obj
+---
+bool success
+string message
+sensor_msgs/PointCloud2 cloud
+int32 objects_count
+int32 points_count
+---
+string stage
+int32 objects_processed
+int32 points_accumulated

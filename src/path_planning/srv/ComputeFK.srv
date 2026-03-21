@@ -1,0 +1,9 @@
+# 正运动学服务请求/响应
+# 由 path_planning 定义，motion_control 实现
+# Request: 关节角 (标准顺序: shoulder_pan, shoulder_lift, elbow, wrist_1, wrist_2, wrist_3)
+sensor_msgs/JointState joint_state
+---
+# Response: 末端执行器位姿
+geometry_msgs/PoseStamped ee_pose
+bool success
+string message

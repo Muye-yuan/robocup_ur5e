@@ -1,0 +1,11 @@
+# 逆运动学服务请求/响应
+# 由 path_planning 定义，motion_control 实现
+# Request: 目标末端位姿 (base_link 系)
+geometry_msgs/PoseStamped target_pose
+# 可选：种子关节角，用于数值 IK 初值
+sensor_msgs/JointState seed_state
+---
+# Response: 求解得到的关节角
+sensor_msgs/JointState solution
+bool success
+string message

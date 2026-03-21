@@ -21,7 +21,11 @@ NODES_DIR = PKG_DIR / "nodes"
 if str(NODES_DIR) not in sys.path:
     sys.path.insert(0, str(NODES_DIR))
 
-from grasp_inference_core import GraspNetInferenceCore, load_point_cloud  # noqa: E402
+from grasp_inference_core import (  # noqa: E402
+    GraspNetInferenceCore,
+    filter_grasp_candidates_by_approach,
+    load_point_cloud,
+)
 
 
 def _repo_root() -> Path:
@@ -62,6 +66,24 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cloud_path", required=True, help="Path to point cloud file (.ply or .pcd)")
     parser.add_argument("--checkpoint_path", default=None, help="Path to GraspNet checkpoint file")
     parser.add_argument("--top_k", type=int, default=None, help="Number of top grasp candidates to keep")
+    parser.add_argument(
+        "--approach_filter",
+        default="top_side",
+        choices=["off", "top", "top_side", "side_top"],
+        help="Filter grasps by approach direction for table-top scenes.",
+    )
+    parser.add_argument(
+        "--min_down_dot",
+        type=float,
+        default=0.25,
+        help="Minimum dot product with world down direction to keep a grasp.",
+    )
+    parser.add_argument(
+        "--max_up_dot",
+        type=float,
+        default=0.2,
+        help="Maximum dot product with world up direction to keep a grasp.",
+    )
     parser.add_argument(
         "--config",
         default=str(PKG_DIR / "config" / "offline_grasp_test.yaml"),
@@ -110,11 +132,21 @@ def main() -> int:
     print(f"[Offline] Preprocessed points: {points_proc.shape[0]}")
 
     start = time.perf_counter()
-    candidates = core.predict(points, colors, top_k=top_k)
+    raw_candidates = core.predict(points, colors, top_k=top_k)
+    candidates = filter_grasp_candidates_by_approach(
+        raw_candidates,
+        mode=args.approach_filter,
+        min_down_dot=args.min_down_dot,
+        max_up_dot=args.max_up_dot,
+    )
     elapsed = time.perf_counter() - start
 
     print(f"[Offline] Inference time: {elapsed:.4f}s")
-    print(f"[Offline] Candidate count: {len(candidates)}")
+    print(f"[Offline] Raw candidate count: {len(raw_candidates)}")
+    print(
+        f"[Offline] Filtered candidate count: {len(candidates)} "
+        f"(mode={args.approach_filter}, min_down_dot={args.min_down_dot}, max_up_dot={args.max_up_dot})"
+    )
 
     if candidates:
         top1 = candidates[0]
@@ -125,8 +157,10 @@ def main() -> int:
         print(f"  rotation: {rotation}")
         print(f"  score: {float(top1['score']):.6f}")
         print(f"  width: {float(top1['width']):.6f}")
+        print(f"  approach_down_dot: {float(top1['approach_down_dot']):.6f}")
+        print(f"  approach_up_dot: {float(top1['approach_up_dot']):.6f}")
     else:
-        print("[Offline] No grasp candidates returned.")
+        print("[Offline] No grasp candidates remained after approach filtering.")
 
     return 0
 

@@ -1,0 +1,56 @@
+# ============================================================================
+# Perception YOLO GPU Native: ROS Noetic + PyTorch nightly (sm_120 RTX 50)
+# 原生 ROS + GPU，无需 rosbridge
+# Ubuntu 22.04 + ros-for-jammy PPA + PyTorch nightly cu128
+# ============================================================================
+FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04
+
+ENV TZ=Asia/Shanghai
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+ENV DEBIAN_FRONTEND=noninteractive
+
+# ROS Noetic for Jammy (社区 PPA)
+RUN apt-get update && apt-get install -y \
+    software-properties-common curl \
+    && add-apt-repository -y ppa:ros-for-jammy/noetic \
+    && apt-get update && apt-get install -y \
+    ros-noetic-ros-base \
+    ros-noetic-rosbash \
+    ros-noetic-cv-bridge \
+    ros-noetic-vision-opencv \
+    ros-noetic-message-filters \
+    python3-pip build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install --upgrade pip setuptools wheel \
+    && pip3 install catkin_pkg catkin_tools
+
+# PyTorch nightly cu128（支持 sm_120 / RTX 50 系列），cu124 仅支持到 sm_90
+RUN pip3 install --pre torch --index-url https://download.pytorch.org/whl/nightly/cu128 \
+    && pip3 install --pre torchvision --no-deps --index-url https://download.pytorch.org/whl/nightly/cu128
+
+# 其余依赖
+# - cv_bridge 与 NumPy 2.x 不兼容，固定 NumPy 1.26
+# - ultralytics/ultralytics-thop 用 --no-deps，避免把 torch 替换成不支持 sm_120 的稳定版
+# YOLO26-Seg 需要 ultralytics>=8.3.222（含 Segment26 头）
+RUN pip3 install --upgrade "numpy==1.26.4" \
+    && pip3 install --no-deps "ultralytics>=8.3.222" \
+    && pip3 install "opencv-python<4.11" "scipy<1.14" matplotlib requests psutil rospkg \
+    && pip3 install tqdm pandas seaborn py-cpuinfo \
+    && pip3 install --no-deps ultralytics-thop \
+    && pip3 install --pre torch torchvision --no-deps --index-url https://download.pytorch.org/whl/nightly/cu128 --force-reinstall
+
+WORKDIR /workspace
+RUN mkdir -p /workspace/src
+
+COPY src/common_msgs /workspace/src/common_msgs
+COPY src/perception_yolo /workspace/src/perception_yolo
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# 不在镜像构建阶段 catkin build（common_msgs 依赖 moveit_msgs，在 jammy PPA 不可用）
+
+WORKDIR /workspace
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["/bin/bash"]

@@ -1,0 +1,77 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- One-shot planning demo with target removal (YOLO segmentation based),
+       analogous to prm_planner.launch usage style. -->
+
+  <!-- General planning / world parameters -->
+  <arg name="frame_id" default="base_link" />
+  <arg name="workspace_x" default="[-0.5, 1.0]" />
+  <arg name="workspace_y" default="[-0.5, 0.5]" />
+  <arg name="workspace_z" default="[0.0, 0.8]" />
+  <arg name="voxel_resolution" default="0.05" />
+
+  <!-- Point cloud topics -->
+  <arg name="pointcloud_topic" default="/camera/depth/points" />
+  <arg name="seg_cloud_topic" default="/perception/yolo26_seg_cloud" />
+  <!-- Optional YOLO instance cloud from yolo26_seg_xyzl_instance_cloud_node.py -->
+  <arg name="instance_cloud_topic" default="" />
+
+  <!-- Target specification -->
+  <!-- Mode A: legacy – remove by YOLO class id from seg_cloud_topic -->
+  <arg name="target_class_id" default="0" />
+  <arg name="removal_padding" default="0.02" />
+  <!-- Mode B: preferred – select target instance by 3D center in frame_id -->
+  <arg name="target_center" default="[0.779967, -0.160081, 0.613571]" />
+
+  <!-- Start / goal configuration (aligned with demo_one_shot_planning.py) -->
+  <arg name="start_xyz" default="[0.2, 0.0, 0.5]" />
+  <arg name="home_joints" default="[0.0, -1.5708, 0.0, -1.5708, 0.0, 0.0]" />
+  <arg name="virtual_grasp_point" default="[0.679967, -0.160081, 0.613571]" />
+  <arg name="goal_joints_default" default="[0.0, -2.0, 1.2, -1.5708, -1.5708, 0.0]" />
+  <!-- Optional explicit goal_joints override; empty string means "use goal_joints_default" -->
+  <arg name="goal_joints" default="" />
+  <!-- Optional: 4x4 goal pose (base_link). When set, use plan_one_shot_from_goal_pose and ignore virtual_grasp_point/goal_joints. Format: "[[r00,r01,r02,x],[r10,r11,r12,y],[r20,r21,r22,z],[0,0,0,1]]" or 16 floats row-major. Default empty = use virtual_grasp_point + IK -->
+  <arg name="goal_pose_4x4" default="" />
+
+  <!-- Visualization / logging -->
+  <arg name="publish_plan_markers" default="true" />
+  <arg name="target_pose_frame_id" default="one_shot_target_pose" />
+  <arg name="planning_viz_3d_output" default="/tmp/planning_result_3d_target_removal.png" />
+
+  <node name="demo_one_shot_with_target_removal"
+        pkg="path_planning"
+        type="demo_one_shot_with_target_removal.py"
+        output="screen">
+
+    <!-- Frame / workspace -->
+    <param name="frame_id" value="$(arg frame_id)" />
+    <param name="workspace_x" value="$(arg workspace_x)" />
+    <param name="workspace_y" value="$(arg workspace_y)" />
+    <param name="workspace_z" value="$(arg workspace_z)" />
+    <param name="voxel_resolution" value="$(arg voxel_resolution)" />
+
+    <!-- Point clouds -->
+    <param name="pointcloud_topic" value="$(arg pointcloud_topic)" />
+    <param name="seg_cloud_topic" value="$(arg seg_cloud_topic)" />
+    <param name="instance_cloud_topic" value="$(arg instance_cloud_topic)" />
+
+    <!-- Target selection -->
+    <param name="target_class_id" value="$(arg target_class_id)" />
+    <param name="removal_padding" value="$(arg removal_padding)" />
+    <param name="target_center" value="$(arg target_center)" />
+
+    <!-- Start / goal -->
+    <param name="start_xyz" value="$(arg start_xyz)" />
+    <param name="home_joints" value="$(arg home_joints)" />
+    <param name="virtual_grasp_point" value="$(arg virtual_grasp_point)" />
+    <param name="goal_joints_default" value="$(arg goal_joints_default)" />
+    <param name="goal_joints" value="$(arg goal_joints)" />
+    <param name="goal_pose_4x4" value="$(arg goal_pose_4x4)" />
+
+    <!-- Visualization / outputs -->
+    <param name="publish_plan_markers" value="$(arg publish_plan_markers)" />
+    <param name="target_pose_frame_id" value="$(arg target_pose_frame_id)" />
+    <param name="planning_viz_3d_output" value="$(arg planning_viz_3d_output)" />
+  </node>
+</launch>
+

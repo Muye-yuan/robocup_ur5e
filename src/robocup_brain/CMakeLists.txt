@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   moveit_msgs
   actionlib
+  actionlib_msgs
   common_msgs
 )
 
@@ -17,6 +18,7 @@ catkin_package(
     geometry_msgs 
     moveit_msgs 
     actionlib
+    actionlib_msgs
     common_msgs
 )
 

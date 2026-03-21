@@ -2,8 +2,11 @@ cmake_minimum_required(VERSION 3.0.2)
 project(motion_control)
 
 find_package(catkin REQUIRED COMPONENTS
+  actionlib
+  actionlib_msgs
   rospy
   std_msgs
+  std_srvs
   geometry_msgs
   trajectory_msgs
   sensor_msgs
@@ -15,8 +18,11 @@ find_package(catkin REQUIRED COMPONENTS
 
 catkin_package(
   CATKIN_DEPENDS
+    actionlib
+    actionlib_msgs
     rospy
     std_msgs
+    std_srvs
     geometry_msgs
     trajectory_msgs
     sensor_msgs
@@ -28,6 +34,8 @@ catkin_package(
 
 catkin_install_python(PROGRAMS
   nodes/motion_control_node.py
+  nodes/gripper_monitor_node.py
+  nodes/gripper_control_node.py
   scripts/check_moveit_ik.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

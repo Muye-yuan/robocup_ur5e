@@ -1,0 +1,27 @@
+<launch>
+  <!-- 夹爪单独调试节点；motion_control_node 内已内置同样的控制逻辑 -->
+  <arg name="gripper_action" default="/gripper_controller/follow_joint_trajectory"/>
+  <arg name="gripper_joint_name" default="robotiq_85_left_knuckle_joint"/>
+  <arg name="command_topic" default="/debug_gripper/command"/>
+  <arg name="grasp_service" default="/debug_gripper/grasp"/>
+  <arg name="release_service" default="/debug_gripper/release"/>
+  <arg name="result_topic" default="/debug_gripper/grasp_result"/>
+  <arg name="state_topic" default="/gripper_controller/state"/>
+  <arg name="move_time" default="1.0"/>
+  <arg name="position_tolerance" default="0.03"/>
+  <arg name="run_monitor" default="false"/>
+
+  <node name="gripper_control_debug" pkg="motion_control" type="gripper_control_node.py" output="screen">
+    <param name="gripper_action" value="$(arg gripper_action)"/>
+    <param name="gripper_joint_name" value="$(arg gripper_joint_name)"/>
+    <param name="command_topic" value="$(arg command_topic)"/>
+    <param name="grasp_service" value="$(arg grasp_service)"/>
+    <param name="release_service" value="$(arg release_service)"/>
+    <param name="result_topic" value="$(arg result_topic)"/>
+    <param name="state_topic" value="$(arg state_topic)"/>
+    <param name="move_time" value="$(arg move_time)"/>
+    <param name="position_tolerance" value="$(arg position_tolerance)"/>
+  </node>
+
+  <node if="$(arg run_monitor)" name="gripper_monitor" pkg="motion_control" type="gripper_monitor_node.py" output="screen"/>
+</launch>

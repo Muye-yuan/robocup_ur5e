@@ -1,0 +1,468 @@
+{
+  "description": "arm_gazebo models 摘要：物品名称、中心点、半轴(half_extents)；已为 mesh 模型从 .obj 计算 AABB half_extents（如有）；含 object_list 的 class 信息",
+  "generator": "scripts/generate_models_json.py",
+  "object_list_source": "object_list.txt",
+  "models": [
+    {
+      "name": "gelatin_box",
+      "folder": "009_gelatin_box",
+      "center": [
+        -0.022676,
+        -0.00786,
+        0.013878
+      ],
+      "half_extents": [
+        0.044655,
+        0.050513,
+        0.015024
+      ],
+      "geometry_type": "mesh",
+      "scale": null,
+      "link_count": 1,
+      "note": "中心来自 inertial pose（质心偏移） | mesh AABB half_extents from downsampled.obj"
+    },
+    {
+      "name": "potted_meat_can",
+      "folder": "010_potted_meat_can",
+      "center": [
+        -0.03284,
+        -0.026353,
+        0.037831
+      ],
+      "half_extents": [
+        0.051028,
+        0.030044,
+        0.041771
+      ],
+      "geometry_type": "mesh",
+      "scale": null,
+      "link_count": 1,
+      "note": "中心来自 inertial pose（质心偏移） | mesh AABB half_extents from downsampled.obj"
+    },
+    {
+      "name": "large_marker",
+      "folder": "040_large_marker",
+      "center": [
+        -0.035725,
+        -0.007881,
+        0.009018
+      ],
+      "half_extents": [
+        0.01051,
+        0.060456,
+        0.009447
+      ],
+      "geometry_type": "mesh",
+      "scale": null,
+      "link_count": 1,
+      "note": "中心来自 inertial pose（质心偏移） | mesh AABB half_extents from downsampled.obj"
+    },
+    {
+      "name": "Blue Bin",
+      "folder": "binBlue",
+      "center": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "half_extents": [
+        0.450859,
+        0.450859,
+        0.232596
+      ],
+      "geometry_type": "mesh",
+      "scale": [
+        0.3,
+        0.3,
+        0.24
+      ],
+      "link_count": 1,
+      "note": "mesh scale: [0.3, 0.3, 0.24] | mesh AABB half_extents from recycleBinBlue2.dae"
+    },
+    {
+      "name": "Green Bin",
+      "folder": "binGreen",
+      "center": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "half_extents": [
+        0.450859,
+        0.450859,
+        0.232596
+      ],
+      "geometry_type": "mesh",
+      "scale": [
+        0.3,
+        0.3,
+        0.24
+      ],
+      "link_count": 1,
+      "note": "mesh scale: [0.3, 0.3, 0.24] | mesh AABB half_extents from recycleBinGreen.dae"
+    },
+    {
+      "name": "blueBlock",
+      "folder": "blueBlock",
+      "class_id": 1,
+      "class_name": "class_1",
+      "class_label": "Blue Block",
+      "center": [
+        0,
+        0,
+        0
+      ],
+      "half_extents": [
+        0.0125,
+        0.0125,
+        0.0125
+      ],
+      "geometry_type": "box",
+      "scale": null,
+      "link_count": 1,
+      "note": ""
+    },
+    {
+      "name": "Blue Bottle",
+      "folder": "blueBottle",
+      "class_id": 0,
+      "class_name": "class_0",
+      "class_label": "Blue Bottle",
+      "center": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "half_extents": [
+        0.034,
+        0.034,
+        0.034
+      ],
+      "geometry_type": "mesh",
+      "scale": [
+        0.034,
+        0.034,
+        0.034
+      ],
+      "link_count": 1,
+      "note": "mesh scale: [0.034, 0.034, 0.034] | mesh AABB half_extents from bottleBlue.dae"
+    },
+    {
+      "name": "cardboard_box",
+      "folder": "cardboard_box",
+      "class_id": 2,
+      "class_name": "class_2",
+      "class_label": "cardboard_box",
+      "center": [
+        0,
+        0,
+        0
+      ],
+      "half_extents": [
+        0.12,
+        0.08,
+        0.055
+      ],
+      "geometry_type": "box",
+      "scale": null,
+      "link_count": 1,
+      "note": ""
+    },
+    {
+      "name": "greenBlock",
+      "folder": "greenBlock",
+      "class_id": 3,
+      "class_name": "class_3",
+      "class_label": "Green Block",
+      "center": [
+        0,
+        0,
+        0
+      ],
+      "half_extents": [
+        0.0125,
+        0.0125,
+        0.0125
+      ],
+      "geometry_type": "box",
+      "scale": null,
+      "link_count": 1,
+      "note": ""
+    },
+    {
+      "name": "Green Can",
+      "folder": "greenCan",
+      "class_id": 4,
+      "class_name": "class_4",
+      "class_label": "Green Can",
+      "center": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "half_extents": [
+        0.033,
+        0.033,
+        0.033
+      ],
+      "geometry_type": "mesh",
+      "scale": [
+        0.033,
+        0.033,
+        0.033
+      ],
+      "link_count": 1,
+      "note": "mesh scale: [0.033, 0.033, 0.033] | mesh AABB half_extents from canGreen.dae"
+    },
+    {
+      "name": "pouch",
+      "folder": "pouch",
+      "center": [
+        0,
+        0,
+        0
+      ],
+      "half_extents": [
+        0.015,
+        0.015,
+        0.01
+      ],
+      "geometry_type": "box",
+      "scale": null,
+      "link_count": 1,
+      "note": ""
+    },
+    {
+      "name": "purpleBlock",
+      "folder": "purpleBlock",
+      "class_id": 5,
+      "class_name": "class_5",
+      "class_label": "Purple Block",
+      "center": [
+        0,
+        0,
+        0
+      ],
+      "half_extents": [
+        0.0125,
+        0.0125,
+        0.0125
+      ],
+      "geometry_type": "box",
+      "scale": null,
+      "link_count": 1,
+      "note": ""
+    },
+    {
+      "name": "redBlock",
+      "folder": "redBlock",
+      "class_id": 7,
+      "class_name": "class_7",
+      "class_label": "Red Block",
+      "center": [
+        0,
+        0,
+        0
+      ],
+      "half_extents": [
+        0.0125,
+        0.0125,
+        0.0125
+      ],
+      "geometry_type": "box",
+      "scale": null,
+      "link_count": 1,
+      "note": ""
+    },
+    {
+      "name": "Red Bottle",
+      "folder": "redBottle",
+      "class_id": 6,
+      "class_name": "class_6",
+      "class_label": "Red Bottle",
+      "center": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "half_extents": [
+        0.034,
+        0.034,
+        0.034
+      ],
+      "geometry_type": "mesh",
+      "scale": [
+        0.034,
+        0.034,
+        0.034
+      ],
+      "link_count": 1,
+      "note": "mesh scale: [0.034, 0.034, 0.034] | mesh AABB half_extents from bottleRedBlue.dae"
+    },
+    {
+      "name": "Red Can",
+      "folder": "redCan",
+      "class_id": 8,
+      "class_name": "class_8",
+      "class_label": "Red Can",
+      "center": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "half_extents": [
+        0.033,
+        0.033,
+        0.033
+      ],
+      "geometry_type": "mesh",
+      "scale": [
+        0.033,
+        0.033,
+        0.033
+      ],
+      "link_count": 1,
+      "note": "mesh scale: [0.033, 0.033, 0.033] | mesh AABB half_extents from canRed.dae"
+    },
+    {
+      "name": "scale",
+      "folder": "scale",
+      "center": [
+        0.0,
+        0.0,
+        0.002
+      ],
+      "half_extents": [
+        0.1,
+        0.175,
+        0.032
+      ],
+      "geometry_type": "box",
+      "scale": null,
+      "link_count": 2,
+      "note": ""
+    },
+    {
+      "name": "table",
+      "folder": "table",
+      "center": [
+        0.0,
+        0.0,
+        0.5
+      ],
+      "half_extents": [
+        0.75,
+        0.4,
+        0.015
+      ],
+      "geometry_type": "box",
+      "scale": null,
+      "link_count": 1,
+      "note": ""
+    },
+    {
+      "name": "unit_box",
+      "folder": "unit_box",
+      "center": [
+        0,
+        0,
+        0
+      ],
+      "half_extents": [
+        0.12,
+        0.2,
+        0.05
+      ],
+      "geometry_type": "box",
+      "scale": null,
+      "link_count": 1,
+      "note": ""
+    },
+    {
+      "name": "wood_cube_7_5cm",
+      "folder": "wood_cube_7_5cm",
+      "center": [
+        0.0,
+        0.0,
+        0.0375
+      ],
+      "half_extents": [
+        0.0375,
+        0.0375,
+        0.0375
+      ],
+      "geometry_type": "box",
+      "scale": null,
+      "link_count": 1,
+      "note": ""
+    },
+    {
+      "name": "wooden_case",
+      "folder": "wooden_case",
+      "center": [
+        0.162365,
+        0.0,
+        0.146626
+      ],
+      "half_extents": [
+        0.225865,
+        0.2921,
+        0.232974
+      ],
+      "geometry_type": "box",
+      "scale": null,
+      "link_count": 2,
+      "note": ""
+    },
+    {
+      "name": "Yellow Bottle",
+      "folder": "yellowBottle",
+      "class_id": 9,
+      "class_name": "class_9",
+      "class_label": "Yellow Bottle",
+      "center": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "half_extents": [
+        0.034,
+        0.034,
+        0.034
+      ],
+      "geometry_type": "mesh",
+      "scale": [
+        0.034,
+        0.034,
+        0.034
+      ],
+      "link_count": 1,
+      "note": "mesh scale: [0.034, 0.034, 0.034] | mesh AABB half_extents from bottleYellowBlue.dae"
+    },
+    {
+      "name": "Yellow Can",
+      "folder": "yellowCan",
+      "class_id": 10,
+      "class_name": "class_10",
+      "class_label": "Yellow Can",
+      "center": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "half_extents": [
+        0.033,
+        0.033,
+        0.033
+      ],
+      "geometry_type": "mesh",
+      "scale": [
+        0.033,
+        0.033,
+        0.033
+      ],
+      "link_count": 1,
+      "note": "mesh scale: [0.033, 0.033, 0.033] | mesh AABB half_extents from canYellow.dae"
+    }
+  ]
+}

@@ -17,6 +17,9 @@ sleep 1
 docker exec -it "$CONTAINER_NAME" bash -c '
   source /opt/ros/noetic/setup.bash 2>/dev/null || true
   [ -f /workspace/devel/setup.bash ] && source /workspace/devel/setup.bash
+  for extra_pkg in /workspace/src/ur_description /workspace/src/robotiq_description; do
+    [ -d "$extra_pkg" ] && export ROS_PACKAGE_PATH="${extra_pkg}:${ROS_PACKAGE_PATH}"
+  done
   export ROS_MASTER_URI=${ROS_MASTER_URI:-http://localhost:11311}
   export ROS_IP=${ROS_IP:-}
   cd /workspace 2>/dev/null || true

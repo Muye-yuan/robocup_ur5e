@@ -23,7 +23,11 @@ NODES_DIR = PKG_DIR / "nodes"
 if str(NODES_DIR) not in sys.path:
     sys.path.insert(0, str(NODES_DIR))
 
-from grasp_inference_core import GraspNetInferenceCore, load_point_cloud  # noqa: E402
+from grasp_inference_core import (  # noqa: E402
+    GraspNetInferenceCore,
+    filter_grasp_candidates_by_approach,
+    load_point_cloud,
+)
 
 
 def _repo_root() -> Path:
@@ -59,6 +63,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to graspnet-baseline repo",
     )
     parser.add_argument("--top_k", type=int, default=5, help="Number of grasps to visualize")
+    parser.add_argument(
+        "--raw_top_k",
+        type=int,
+        default=None,
+        help="Number of raw grasp candidates to fetch before filtering. Defaults to top_k.",
+    )
     parser.add_argument("--frame_id", default="camera_depth_optical_frame", help="RViz frame_id")
     parser.add_argument("--rate", type=float, default=1.0, help="Republish rate in Hz")
     parser.add_argument("--cloud_topic", default="/grasp/offline_cloud", help="Point cloud topic")
@@ -66,6 +76,24 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--marker_topic", default="/grasp/offline_markers", help="MarkerArray topic")
     parser.add_argument("--num_point", type=int, default=20000, help="GraspNet num_point")
     parser.add_argument("--voxel_size", type=float, default=0.0, help="Preprocess voxel size")
+    parser.add_argument(
+        "--approach_filter",
+        default="top_side",
+        choices=["off", "top", "top_side", "side_top"],
+        help="Filter grasps by approach direction for table-top scenes.",
+    )
+    parser.add_argument(
+        "--min_down_dot",
+        type=float,
+        default=0.25,
+        help="Minimum dot product with world down direction to keep a grasp.",
+    )
+    parser.add_argument(
+        "--max_up_dot",
+        type=float,
+        default=0.2,
+        help="Maximum dot product with world up direction to keep a grasp.",
+    )
     return parser
 
 
@@ -217,6 +245,7 @@ def main() -> int:
     cloud_path = _resolve_path(args.cloud_path)
     checkpoint_path = _resolve_path(args.checkpoint_path)
     repo_path = _resolve_path(args.graspnet_repo_path)
+    raw_top_k = int(args.raw_top_k if args.raw_top_k is not None else args.top_k)
 
     rospy.init_node("offline_graspnet_rviz", anonymous=False)
 
@@ -228,11 +257,23 @@ def main() -> int:
         voxel_size=args.voxel_size,
         graspnet_repo_path=repo_path,
     )
-    candidates = core.predict(points, colors, top_k=args.top_k)
+    raw_candidates = core.predict(points, colors, top_k=raw_top_k)
+    filtered_candidates = filter_grasp_candidates_by_approach(
+        raw_candidates,
+        mode=args.approach_filter,
+        min_down_dot=args.min_down_dot,
+        max_up_dot=args.max_up_dot,
+    )
+    candidates = filtered_candidates[: max(int(args.top_k), 0)]
 
     rospy.loginfo(f"[Offline RViz] Cloud: {cloud_path}")
     rospy.loginfo(f"[Offline RViz] Raw points: {points.shape[0]}")
-    rospy.loginfo(f"[Offline RViz] Candidate count: {len(candidates)}")
+    rospy.loginfo(f"[Offline RViz] Raw candidate count: {len(raw_candidates)}")
+    rospy.loginfo(
+        f"[Offline RViz] Filtered candidate count: {len(filtered_candidates)} "
+        f"(visualizing {len(candidates)}) "
+        f"(mode={args.approach_filter}, min_down_dot={args.min_down_dot}, max_up_dot={args.max_up_dot})"
+    )
 
     cloud_pub = rospy.Publisher(args.cloud_topic, PointCloud2, queue_size=1, latch=True)
     pose_pub = rospy.Publisher(args.pose_topic, PoseArray, queue_size=1, latch=True)

@@ -50,12 +50,25 @@ docker exec -it path_planning bash -c "source /workspace/scripts/setup_container
    - Marker：Topic `/path_planning/rrt_path`（RRT* 路径，蓝色）
    - Marker：Topic `/path_planning/virtual_grasp_point`（虚拟抓取点，黄色球体）
 
+## 与 motion_control 集成
+
+Path planning 优先使用 **motion_control** 的 IK/FK 服务，不可用时自动回退到本地 DH 实现。
+
+| 接口 | 说明 |
+|------|------|
+| `/motion/compute_ik` | 逆运动学服务 (path_planning/srv/ComputeIK.srv) |
+| `/motion/compute_fk` | 正运动学服务 (path_planning/srv/ComputeFK.srv) |
+| `/motion/ee_pose` | （可选）motion_control 发布的当前末端位姿 PoseStamped |
+
+参数 `use_motion_control_kinematics: true`（默认）启用服务调用。motion_control 需实现上述服务，否则 path_planning 使用本地 IK/FK。
+
 ## 话题
 
 | 订阅 | 说明 |
 |------|------|
 | /camera/depth/points | 3D 点云输入 |
 | /joint_states | 关节状态（可选） |
+| /motion/ee_pose | （可选）motion_control 当前末端位姿 |
 
 | 发布 | 说明 |
 |------|------|
@@ -67,7 +80,7 @@ docker exec -it path_planning bash -c "source /workspace/scripts/setup_container
 
 ## 配置（planning_config.yaml）
 
-- `virtual_grasp_point`: 虚拟抓取点 [x, y, z]，默认 `[0.68, 0.0, 0.55]`（Gazebo 箱子后方）
+- `virtual_grasp_point`: 虚拟抓取点 [x, y, z]，默认 `[0.35, 0.0, 0.2]`（桌面中心、桌面上表面高度）
 - `use_virtual_grasp_only`: 为 true 时，无点云也执行规划（使用 Gazebo 默认障碍物）
 
 ## RViz 无法启动（故障排除）

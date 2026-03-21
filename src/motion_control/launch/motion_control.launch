@@ -4,11 +4,47 @@
   <arg name="robot_name" default="ur5e"/>
   <arg name="base_frame" default="base_link"/>
   <arg name="ee_frame" default="tool0"/>
+  <arg name="gripper_action_name" default="/gripper_controller/follow_joint_trajectory"/>
+  <arg name="gripper_joint_name" default="robotiq_85_left_knuckle_joint"/>
+  <arg name="gripper_open_position" default="0.0"/>
+  <arg name="gripper_closed_position" default="0.72"/>
+  <arg name="gripper_motion_time" default="1.0"/>
+  <arg name="gripper_wait_timeout" default="3.0"/>
+  <arg name="gripper_position_tolerance" default="0.03"/>
+  <arg name="gripper_grasp_retry_count" default="1"/>
+  <arg name="gripper_post_grasp_settle_time" default="0.2"/>
+  <arg name="gripper_skip_holding_check" default="true"/>
+  <arg name="gripper_accept_partial_grasp" default="true"/>
+  <arg name="gripper_release_min_closed_error" default="0.25"/>
+  <arg name="gripper_empty_grasp_closed_tolerance" default="0.05"/>
+  <arg name="gripper_left_tip_link" default="robotiq_85_left_finger_tip_link"/>
+  <arg name="gripper_right_tip_link" default="robotiq_85_right_finger_tip_link"/>
+  <arg name="gripper_holding_min_distance" default="0.018"/>
+  <arg name="gripper_holding_max_distance" default="0.095"/>
+  <arg name="gripper_holding_closed_margin" default="0.05"/>
   
-  <node name="motion_control" pkg="motion_control" type="motion_control_node.py" output="screen">
+  <node name="motion_control" pkg="motion_control" type="motion_control_node.py" output="screen" respawn="true" respawn_delay="2.0">
     <param name="robot_name" value="$(arg robot_name)"/>
     <param name="base_frame" value="$(arg base_frame)"/>
     <param name="ee_frame" value="$(arg ee_frame)"/>
+    <param name="gripper_action_name" value="$(arg gripper_action_name)"/>
+    <param name="gripper_joint_name" value="$(arg gripper_joint_name)"/>
+    <param name="gripper_open_position" value="$(arg gripper_open_position)"/>
+    <param name="gripper_closed_position" value="$(arg gripper_closed_position)"/>
+    <param name="gripper_motion_time" value="$(arg gripper_motion_time)"/>
+    <param name="gripper_wait_timeout" value="$(arg gripper_wait_timeout)"/>
+    <param name="gripper_position_tolerance" value="$(arg gripper_position_tolerance)"/>
+    <param name="gripper_grasp_retry_count" value="$(arg gripper_grasp_retry_count)"/>
+    <param name="gripper_post_grasp_settle_time" value="$(arg gripper_post_grasp_settle_time)"/>
+    <param name="gripper_skip_holding_check" value="$(arg gripper_skip_holding_check)"/>
+    <param name="gripper_accept_partial_grasp" value="$(arg gripper_accept_partial_grasp)"/>
+    <param name="gripper_release_min_closed_error" value="$(arg gripper_release_min_closed_error)"/>
+    <param name="gripper_empty_grasp_closed_tolerance" value="$(arg gripper_empty_grasp_closed_tolerance)"/>
+    <param name="gripper_left_tip_link" value="$(arg gripper_left_tip_link)"/>
+    <param name="gripper_right_tip_link" value="$(arg gripper_right_tip_link)"/>
+    <param name="gripper_holding_min_distance" value="$(arg gripper_holding_min_distance)"/>
+    <param name="gripper_holding_max_distance" value="$(arg gripper_holding_max_distance)"/>
+    <param name="gripper_holding_closed_margin" value="$(arg gripper_holding_closed_margin)"/>
     
     <rosparam file="$(find motion_control)/config/ur5e_config.yaml" command="load"/>
   </node>

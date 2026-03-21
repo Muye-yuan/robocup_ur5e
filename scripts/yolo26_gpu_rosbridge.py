@@ -110,17 +110,6 @@ def main():
         if now - last_print < args.print_interval:
             return
 
-        # Gazebo 仿真时间（来自图像 header）
-        try:
-            hdr = msg.get("header", {})
-            stamp = hdr.get("stamp", {})
-            secs = stamp.get("secs", 0)
-            nsecs = stamp.get("nsecs", 0)
-            sim_time = secs + nsecs * 1e-9
-            print(f"sim_time={sim_time:.3f} (sec={secs}, nsec={nsecs})")
-        except Exception:
-            pass
-
         frame = decode_image(msg)
         depth_msg = latest_depth["msg"]
         depth = None

@@ -10,6 +10,8 @@ services:
     image: robocup_ur5e/brain:latest
     container_name: robocup_brain
     network_mode: "host"  # 最小化延迟
+    env_file:
+      - ./scripts/.env
     environment:
       - ROS_MASTER_URI=${ROS_MASTER_URI:-http://localhost:11311}
       - ROS_IP=${ROS_IP:-127.0.0.1}
@@ -17,6 +19,7 @@ services:
     volumes:
       - ./src/common_msgs:/workspace/src/common_msgs:ro
       - ./src/robocup_brain:/workspace/src/robocup_brain:ro
+      - ./src/motion_control:/workspace/src/motion_control:ro
       - ./scripts:/workspace/scripts:ro  # 系统脚本
       - /tmp/.X11-unix:/tmp/.X11-unix:rw  # GUI 支持
     restart: unless-stopped
@@ -46,6 +49,7 @@ services:
       - ./scripts:/workspace/scripts:ro  # 系统脚本
       - ./weights:/workspace/weights:rw  # 权重目录
       - /home/liufazhan/pics:/workspace/pics:rw  # 图片输出目录
+      - ./pointclouds:/workspace/pointclouds:rw  # 点云保存目录
       - ./.cursor:/home/liufazhan/robocup_ur5e/.cursor:rw  # debug 日志挂载
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
     deploy:
@@ -76,6 +80,8 @@ services:
     volumes:
       - ./weights:/workspace/weights:rw
       - ./scripts:/workspace/scripts:rw
+      - ./src/perception_yolo:/workspace/src/perception_yolo:rw
+      - ./pointclouds:/workspace/pointclouds:rw
     deploy:
       resources:
         reservations:
@@ -83,6 +89,38 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+    stdin_open: true
+    tty: true
+
+  # ============================================================================
+  # Perception YOLO GPU Native (ROS + PyTorch nightly, 原生 rospy，支持 RTX 50)
+  # ============================================================================
+  perception_yolo_gpu_native:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.yolo_gpu_native
+    image: robocup_ur5e/perception_yolo_gpu_native:latest
+    container_name: perception_yolo_gpu_native
+    network_mode: "host"
+    runtime: nvidia
+    environment:
+      - ROS_MASTER_URI=http://127.0.0.1:11311
+      - ROS_IP=127.0.0.1
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ./src/common_msgs:/workspace/src/common_msgs:ro
+      - ./src/perception_yolo:/workspace/src/perception_yolo:rw
+      - ./weights:/workspace/weights:rw
+      - ./pointclouds:/workspace/pointclouds:rw
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: ["python3", "/workspace/src/perception_yolo/nodes/yolo26_seg_sync_gazebo_gpu_node.py"]
     stdin_open: true
     tty: true
 
@@ -138,6 +176,8 @@ services:
     volumes:
       - ./src/common_msgs:/workspace/src/common_msgs:ro
       - ./src/path_planning:/workspace/src/path_planning:ro
+      - ./third_party/ros/universal_robot/ur_description:/workspace/src/ur_description:ro
+      - ./third_party/ros/robotiq/robotiq_description:/workspace/src/robotiq_description:ro
       - ./scripts:/workspace/scripts:ro
       - ./path_planning_viz:/workspace/viz_output:rw
       - /tmp/.X11-unix:/tmp/.X11-unix:rw

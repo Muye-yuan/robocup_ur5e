@@ -29,6 +29,59 @@ class GraspCandidateData:
     width: float
 
 
+def filter_grasp_candidates_by_approach(
+    candidates: List[Dict[str, Any]],
+    mode: str = "top_side",
+    approach_axis: int = 0,
+    min_down_dot: float = 0.25,
+    max_up_dot: float = 0.2,
+) -> List[Dict[str, Any]]:
+    """Keep candidates whose approach direction is closer to top/side-top grasps.
+
+    Assumes candidate["rotation"] is a 3x3 matrix in world frame and that the
+    grasp approach direction is the chosen local axis of that rotation matrix.
+    """
+    if not candidates:
+        return []
+
+    world_up = np.array([0.0, 0.0, 1.0], dtype=np.float32)
+    world_down = -world_up
+    filtered: List[Dict[str, Any]] = []
+
+    for candidate in candidates:
+        rotation = np.asarray(candidate["rotation"], dtype=np.float32).reshape(3, 3)
+        approach = rotation[:, int(approach_axis)]
+        norm = float(np.linalg.norm(approach))
+        if norm <= 1e-8:
+            continue
+        approach = approach / norm
+
+        down_dot = float(np.dot(approach, world_down))
+        up_dot = float(np.dot(approach, world_up))
+        keep = True
+        if mode == "top":
+            keep = down_dot >= float(min_down_dot) and up_dot <= float(max_up_dot)
+        elif mode == "top_side":
+            keep = down_dot >= float(min_down_dot) and up_dot <= float(max_up_dot)
+        elif mode == "side_top":
+            keep = down_dot >= float(min_down_dot) and up_dot <= float(max_up_dot)
+        elif mode == "off":
+            keep = True
+        else:
+            raise ValueError(
+                f"Unsupported approach filter mode: {mode}. "
+                "Use one of: off, top, top_side, side_top."
+            )
+
+        if keep:
+            filtered_candidate = dict(candidate)
+            filtered_candidate["approach_down_dot"] = down_dot
+            filtered_candidate["approach_up_dot"] = up_dot
+            filtered.append(filtered_candidate)
+
+    return filtered
+
+
 def load_point_cloud(cloud_path: str) -> Tuple[np.ndarray, Optional[np.ndarray]]:
     path = Path(cloud_path)
     if not path.exists():

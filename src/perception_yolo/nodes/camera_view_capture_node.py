@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 """
 获取 Gazebo 相机视角并保存图像
-订阅: /camera/rgb/image_raw
-保存: /tmp/camera_view_*.jpg
+订阅: /camera/rgb/image_raw, /motion/result
+当机械臂每次姿态或位置改变（motion 完成）时触发拍照，不再使用固定时间间隔
+发布: /camera/capture_result (std_msgs/Bool) 供 motion_control 打印结果
 """
 
 import os
@@ -14,6 +15,8 @@ import rospy
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
+from std_msgs.msg import Bool
+from common_msgs.msg import GraspResult
 
 # #region agent log
 def _debug_log(hypothesis_id, location, message, data=None, run_id="run1"):
@@ -77,30 +80,29 @@ class CameraViewCapture:
         _debug_log("H2", "camera_view_capture_node.py:__init__", "bridge_created")
         # #endregion agent log
         self.image_topic = rospy.get_param('~image_topic', '/camera/rgb/image_raw')
-        self.save_dir = rospy.get_param('~save_dir', '/tmp')
-        self.save_interval = float(rospy.get_param('~save_interval', 1.0))
-        self.last_save_time = 0.0
+        self.save_dir = rospy.get_param('~save_dir', '/workspace/saved_images')
+        self._last_frame = None
         # #region agent log
         _debug_log("H2", "camera_view_capture_node.py:__init__", "params_loaded", {
             "image_topic": self.image_topic,
-            "save_dir": self.save_dir,
-            "save_interval": self.save_interval
+            "save_dir": self.save_dir
         })
         # #endregion agent log
 
         os.makedirs(self.save_dir, exist_ok=True)
         rospy.loginfo("订阅图像话题: %s", self.image_topic)
         rospy.loginfo("保存目录: %s", self.save_dir)
-        rospy.loginfo("保存间隔: %.2f 秒", self.save_interval)
+        rospy.loginfo("拍照模式: 运动完成触发 (无固定间隔)")
         # #region agent log
         _debug_log("H2", "camera_view_capture_node.py:config", "config_loaded", {
             "topic": self.image_topic,
-            "save_dir": self.save_dir,
-            "save_interval": self.save_interval
+            "save_dir": self.save_dir
         })
         # #endregion agent log
 
-        self.sub = rospy.Subscriber(self.image_topic, Image, self.callback, queue_size=1)
+        self.capture_result_pub = rospy.Publisher('/camera/capture_result', Bool, queue_size=1)
+        self.sub = rospy.Subscriber(self.image_topic, Image, self._image_callback, queue_size=1)
+        self.motion_result_sub = rospy.Subscriber('/motion/result', GraspResult, self._motion_result_callback, queue_size=10)
         # #region agent log
         _debug_log("H3", "camera_view_capture_node.py:__init__", "subscriber_created", {"topic": self.image_topic})
         # #endregion agent log
@@ -124,48 +126,35 @@ class CameraViewCapture:
                 })
         rospy.Timer(rospy.Duration(5.0), _check_messages, oneshot=True)
 
-    def callback(self, msg):
+    def _image_callback(self, msg):
+        """缓存最新帧，用于运动完成时保存"""
         try:
             self._received_count += 1
-            # #region agent log
-            _debug_log("H3", "camera_view_capture_node.py:callback", "callback_start", {
-                "encoding": getattr(msg, "encoding", None),
-                "width": getattr(msg, "width", None),
-                "height": getattr(msg, "height", None)
-            })
-            # #endregion agent log
             frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+            self._last_frame = frame
         except CvBridgeError as e:
             rospy.logerr("CvBridge 转换失败: %s", str(e))
-            # #region agent log
-            _debug_log("H4", "camera_view_capture_node.py:callback", "cv_bridge_error", {"error": str(e)})
-            # #endregion agent log
             return
 
-        # 当前 ROS 时间（通常在 Gazebo 中为仿真时间）
-        now_time = rospy.Time.now()
-        now = now_time.to_sec()
-        if now - self.last_save_time < self.save_interval:
-            # #region agent log
-            _debug_log("H5", "camera_view_capture_node.py:callback", "skip_save_interval", {
-                "now": now,
-                "last_save_time": self.last_save_time
-            })
-            # #endregion agent log
+    def _motion_result_callback(self, msg):
+        """运动完成时触发拍照：仅当 SUCCESS 时保存（姿态/位置已改变）"""
+        if msg.status != GraspResult.SUCCESS:
             return
+        self._trigger_capture()
 
-        # 图像对应的时间戳：优先使用消息头中的时间（Gazebo 仿真时间）
-        sim_stamp = getattr(msg, "header", None).stamp if hasattr(msg, "header") else now_time
-        sim_time = sim_stamp.to_sec()
-
-        filename = os.path.join(self.save_dir, f"camera_view_{int(sim_time*1000)}.jpg")
-        cv2.imwrite(filename, frame)
-        self.last_save_time = now
-        rospy.loginfo("已保存图像: %s | sim_time=%.3f (sec=%d, nsec=%d)",
-                      filename, sim_time, sim_stamp.secs, sim_stamp.nsecs)
-        # #region agent log
-        _debug_log("H6", "camera_view_capture_node.py:callback", "saved_image", {"filename": filename})
-        # #endregion agent log
+    def _trigger_capture(self):
+        """保存当前帧并发布拍照结果"""
+        success = False
+        if self._last_frame is not None:
+            try:
+                now = rospy.Time.now().to_sec()
+                filename = os.path.join(self.save_dir, f"camera_view_{int(now*1000)}.jpg")
+                if cv2.imwrite(filename, self._last_frame):
+                    success = True
+                    rospy.loginfo("已保存图像: %s", filename)
+            except Exception as e:
+                rospy.logerr("保存图像失败: %s", str(e))
+        self.capture_result_pub.publish(Bool(data=success))
 
 
 if __name__ == '__main__':
@@ -174,3 +163,8 @@ if __name__ == '__main__':
         rospy.spin()
     except rospy.ROSInterruptException:
         pass
+
+
+
+
+# docker exec -it perception_yolo bash -c "source /opt/ros/noetic/setup.bash && export ROS_MASTER_URI=http://127.0.0.1:11311 && source /workspace/devel/setup.bash && python3 /workspace/src/perception_yolo/nodes/camera_view_capture_node.py _save_dir:=/workspace/pics"

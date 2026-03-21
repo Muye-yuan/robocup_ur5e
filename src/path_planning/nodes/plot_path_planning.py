@@ -102,7 +102,7 @@ def main_subscribe(output_path):
     obstacles = list(GAZEBO_DEFAULT_OBSTACLES)
     aco_path_xyz = []
     rrt_path_xyz = []
-    virtual_grasp = [0.68, 0.0, 0.55]
+    virtual_grasp = [0.35, 0.0, 0.2]  # 桌面中心
     start_xyz = None
 
     def on_obstacles(msg):
@@ -154,7 +154,7 @@ def main_static(output_path):
     goal = [-1.5708, -1.5708, -1.5708, -1.5708, 1.5708, 0]
     aco_path = [UR5eFK.fk(home), UR5eFK.fk(goal)]
     rrt_path = [UR5eFK.fk(home), UR5eFK.fk(goal)]
-    grasp = [0.68, 0.0, 0.55]
+    grasp = [0.35, 0.0, 0.2]
     start_xyz = UR5eFK.fk(home)
     plot_planning_results(obstacles, aco_path, rrt_path, grasp, tuple(start_xyz), output_path)
     return 0

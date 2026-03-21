@@ -1,0 +1,17 @@
+trajectory_msgs/JointTrajectory trajectory
+float32 max_velocity
+float32 max_acceleration
+---
+uint8 SUCCEEDED=0
+uint8 EXECUTION_FAILED=1
+uint8 PREEMPTED=2
+uint8 INVALID_TRAJECTORY=3
+uint8 BUSY=4
+bool success
+uint8 status
+string message
+---
+uint8 ACCEPTED=0
+uint8 EXECUTING=1
+uint8 stage
+string message

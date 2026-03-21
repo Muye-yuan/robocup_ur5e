@@ -2,6 +2,7 @@
 <launch>
   <arg name="checkpoint_path" default="/workspace/weights/graspnet/checkpoint.tar" />
   <arg name="graspnet_repo_path" default="/workspace/weights/graspnet/graspnet-baseline" />
+  <arg name="raw_top_k" default="1000" />
   <arg name="num_grasp_candidates" default="5" />
   <arg name="pointcloud_topic" default="/perception/yolo26_seg_cloud" />
   <arg name="num_point" default="20000" />
@@ -10,10 +11,16 @@
   <arg name="task_decision_topic" default="/brain/task_decision" />
   <arg name="failure_topic" default="/perception/grasp_failure_reason" />
   <arg name="marker_topic" default="/perception/grasp_markers" />
+  <arg name="approach_filter" default="top_side" />
+  <arg name="min_down_dot" default="0.0" />
+  <arg name="max_up_dot" default="0.8" />
+  <arg name="min_gripper_width" default="0.0178" />
+  <arg name="max_gripper_width" default="0.1006" />
   
   <node name="grasp_estimator" pkg="perception_grasp" type="grasp_estimator_node.py" output="screen">
     <param name="checkpoint_path" value="$(arg checkpoint_path)" />
     <param name="graspnet_repo_path" value="$(arg graspnet_repo_path)" />
+    <param name="raw_top_k" value="$(arg raw_top_k)" />
     <param name="num_grasp_candidates" value="$(arg num_grasp_candidates)" />
     <param name="pointcloud_topic" value="$(arg pointcloud_topic)" />
     <param name="num_point" value="$(arg num_point)" />
@@ -22,5 +29,10 @@
     <param name="task_decision_topic" value="$(arg task_decision_topic)" />
     <param name="failure_topic" value="$(arg failure_topic)" />
     <param name="marker_topic" value="$(arg marker_topic)" />
+    <param name="approach_filter" value="$(arg approach_filter)" />
+    <param name="min_down_dot" value="$(arg min_down_dot)" />
+    <param name="max_up_dot" value="$(arg max_up_dot)" />
+    <param name="min_gripper_width" value="$(arg min_gripper_width)" />
+    <param name="max_gripper_width" value="$(arg max_gripper_width)" />
   </node>
 </launch>
